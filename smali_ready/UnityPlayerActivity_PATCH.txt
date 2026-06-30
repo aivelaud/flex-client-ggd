@@ -1,0 +1,93 @@
+================================================================
+  UnityPlayerActivity.smali — TAM OLARAK NEREYE NE EKLENECEK
+================================================================
+
+MT Manager ile classes.dex → Smali Dosyaları →
+com/unity3d/player/UnityPlayerActivity.smali dosyasını aç.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DÜZENLEME 1: onCreate metoduna izin kontrolü ekle
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.method protected onCreate(Landroid/os/Bundle;)V metodunu bul.
+Metodun içinde EN SONDA "return-void" satırı var.
+O satırın HEMEN ÖNÜNE şu bloğu yapıştır:
+
+# -------- BURADAN KES-YAPISTIR --------
+    # Overlay izin kontrolü
+    invoke-static {p0}, Landroid/provider/Settings;->canDrawOverlays(Landroid/content/Context;)Z
+    move-result v0
+    if-nez v0, :perm_ok
+
+    # İzin yok → ayarlar ekranını aç
+    new-instance v0, Landroid/content/Intent;
+    const-string v1, "android.settings.action.MANAGE_OVERLAY_PERMISSION"
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    invoke-virtual {p0}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
+    move-result-object v1
+    new-instance v2, Ljava/lang/StringBuilder;
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+    const-string v3, "package:"
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v2
+    invoke-virtual {v2, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    move-result-object v2
+    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v1
+    invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+    move-result-object v1
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->setData(Landroid/net/Uri;)Landroid/content/Intent;
+    invoke-virtual {p0, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
+
+    :perm_ok
+# -------- BURAYA KADAR --------
+
+ÖNEMLI: Yukarıdaki bloğun kullandığı registerlar (v0, v1, v2, v3)
+mevcut metoda göre çakışabilir! Eğer metotta başka yerde v0-v3
+kullanılıyorsa, bloktaki register isimlerini v10, v11, v12, v13 gibi
+yüksek numaralı olanlara değiştir ve .registers sayısını da artır.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DÜZENLEME 2: onResume metoduna servis başlatma ekle
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.method protected onResume()V metodunu bul.
+"invoke-super {p0}, Landroid/app/Activity;->onResume()V" satırından
+HEMEN SONRA şu bloğu ekle:
+
+# -------- BURADAN KES-YAPISTIR --------
+    # İzin varsa overlay servisini başlat
+    invoke-static {p0}, Landroid/provider/Settings;->canDrawOverlays(Landroid/content/Context;)Z
+    move-result v0
+    if-eqz v0, :no_overlay_service
+
+    new-instance v0, Landroid/content/Intent;
+    const-class v1, Lcom/unity3d/player/HackOverlayService;
+    invoke-direct {v0, p0, v1}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
+    invoke-virtual {p0, v0}, Landroid/app/Activity;->startService(Landroid/content/Intent;)Landroid/content/ComponentName;
+
+    :no_overlay_service
+# -------- BURAYA KADAR --------
+
+ÖNEMLI: onResume metodunda .registers sayısını en az 3 artır.
+Mevcut ".registers X" satırını ".registers X+3" yap.
+(Örn: .registers 2 → .registers 5)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DÜZENLEME 3: AndroidManifest.xml
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+APK Editörü → AndroidManifest.xml → Metin Düzenleyici ile aç.
+
+1) Mevcut <uses-permission> satırlarının yanına ekle:
+   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+2) </application> kapanmadan ÖNCE ekle:
+   <service
+       android:name="com.unity3d.player.HackOverlayService"
+       android:enabled="true"
+       android:exported="false" />
