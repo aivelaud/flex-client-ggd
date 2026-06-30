@@ -1,0 +1,15 @@
+<!--
+  AndroidManifest.xml'e EKLENMESI gereken parçalar.
+  Tam dosyayı değiştirme — sadece bu satırları doğru yere yapıştır.
+  MT Manager → ApkEditor → "Manifest" sekmesi ile aç.
+-->
+
+<!-- 1) <manifest> etiketi içine, diğer <uses-permission> satırlarının yanına ekle: -->
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+<!-- 2) <application> etiketi içine, </application> kapanmadan hemen önce ekle: -->
+<service
+    android:name="com.unity3d.player.HackOverlayService"
+    android:enabled="true"
+    android:exported="false" />
